@@ -2,7 +2,7 @@ version: '3.7'
 
 services:
   app:
-    # image: whatwewant/gzssh:v0.0.6
+    # image: whatwewant/gzterminal:v0.0.6
     build:
       context: .
     ports:

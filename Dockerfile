@@ -16,7 +16,7 @@ RUN GOOS=linux \
   go build \
   -trimpath \
   -ldflags '-w -s -buildid=' \
-  -v -o gzssh
+  -v -o gzterminal
 
 # Server
 FROM whatwewant/go:v1.19-1
@@ -29,8 +29,8 @@ ARG VERSION=latest
 
 ENV MODE=production
 
-COPY --from=builder /build/gzssh /bin
+COPY --from=builder /build/gzterminal /bin
 
 ENV VERSION=${VERSION}
 
-CMD gzssh server -c /conf/config.yml
+CMD gzterminal server -c /conf/config.yml

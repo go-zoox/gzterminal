@@ -53,7 +53,7 @@ func RenderXTerm(data zoox.H) string {
 					document.querySelector('title').innerText = query.get('title');
 				}
 
-				var ws = new WebSocket(protocol + '://' + url.host + config.wsPath  );
+				var ws = new WebSocket(protocol + '://' + url.host + config.wsPath);
 				var term = new Terminal({
 					fontFamily: 'Menlo, Monaco, "Courier New", monospace',
 					fontWeight: 400,
@@ -92,14 +92,14 @@ func RenderXTerm(data zoox.H) string {
 					if (!!config.welcomeMessage) {
 						term.write(config.welcomeMessage + " \r\n")
 					} else {
-						term.write("Welcome to GzSSH Client in Web Browser \r\n")
+						term.write("Welcome to gzterminal in web browser \r\n")
 					}
 
 					term.focus();
 				}
 
 				ws.onclose = () => {
-					terminal.write("\r\nGzSSH Client Quit!")
+					terminal.write("\r\ngzterminal Client Quit!")
 					
 					if (confirm('WebSocket Disconnect, Try to reconnect ?')) {
 						window.location.reload();
