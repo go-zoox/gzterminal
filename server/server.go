@@ -88,7 +88,8 @@ func (s *server) Run(cfg *Config) error {
 					return
 				}
 
-				client.WriteText(buf[:n])
+				// client.WriteText(buf[:n])
+				client.WriteBinary(buf[:n])
 			}
 		}()
 
