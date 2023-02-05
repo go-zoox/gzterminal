@@ -21,9 +21,10 @@ type Server interface {
 }
 
 type Config struct {
-	Port     int64
-	Username string
-	Password string
+	Port        int64
+	InitCommand string
+	Username    string
+	Password    string
 }
 
 type server struct {
@@ -67,7 +68,12 @@ func (s *server) Run(cfg *Config) error {
 			userShell = "sh"
 		}
 
-		shell := exec.Command(userShell)
+		args := []string{}
+		if cfg.InitCommand != "" {
+			args = append(args, "-c", cfg.InitCommand)
+		}
+
+		shell := exec.Command(userShell, args...)
 		shell.Env = append(os.Environ(), "TERM=xterm")
 		shell.Dir = userContext
 
