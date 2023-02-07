@@ -113,9 +113,9 @@ func (s *server) Run(cfg *Config) error {
 				}
 				//
 				setWindowSize(tty, resize.Columns, resize.Rows)
-			case '1':
+			default:
 				// command
-				tty.Write(messageData)
+				tty.Write(msg)
 			}
 		}
 	})

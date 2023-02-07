@@ -81,9 +81,9 @@ func RenderXTerm(data zoox.H) string {
 					ws.send(msgType.MsgResize + JSON.stringify({ cols, rows }));
 				});
 
- 				term.onKey((event) => {
-            ws.send(msgType.MsgData + event.key);
-        })
+ 				// term.onKey((event) => {
+        //     ws.send(msgType.MsgData + event.key);
+        // })
 
 				ws.onopen = () => {
 					term.open(document.getElementById('terminal'));
