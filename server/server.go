@@ -11,6 +11,7 @@ import (
 	"github.com/go-zoox/fs"
 	"github.com/go-zoox/logger"
 	"github.com/go-zoox/zoox"
+	"github.com/go-zoox/zoox/components/context/websocket"
 	"github.com/go-zoox/zoox/defaults"
 
 	"github.com/creack/pty"
@@ -61,7 +62,7 @@ func (s *server) Run(cfg *Config) error {
 		})
 	}
 
-	app.WebSocket("/ws", func(ctx *zoox.Context, client *zoox.WebSocketClient) {
+	app.WebSocket("/ws", func(ctx *zoox.Context, client *websocket.WebSocketClient) {
 		userShell := os.Getenv("SHELL")
 		userContext := fs.CurrentDir()
 		if userShell == "" {
