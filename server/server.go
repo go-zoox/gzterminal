@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -119,6 +120,34 @@ func (s *server) Run(cfg *Config) error {
 				tty.Write(msg)
 			}
 		}
+	})
+
+	app.Post("/api/exec", func(ctx *zoox.Context) {
+		bytes, err := ctx.BodyBytes()
+		if err != nil {
+			ctx.Fail(fmt.Errorf("command is illegal format: %s", err), 400001, fmt.Sprintf("command is illegal format: %s", err))
+			return
+		}
+
+		command := string(bytes)
+		if command == "" {
+			ctx.Fail(errors.New("command is required"), 400002, "command is required")
+			return
+		}
+
+		ctx.Logger.Infof("[exec] start to run command: %s", command)
+
+		cmd := exec.Command("sh", "-c", command)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			ctx.Logger.Errorf("[exec] failed to run command: %s (err: %s)", command, err)
+
+			ctx.Fail(fmt.Errorf("failed to run command: %s (err: %s)", command, err), 400003, fmt.Sprintf("failed to run command command: %s (err: %s)", command, err))
+			return
+		}
+
+		ctx.Logger.Infof("[exec] success to run command: %s", command)
+		ctx.String(200, "%s", output)
 	})
 
 	app.Get("/", func(ctx *zoox.Context) {
