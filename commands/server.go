@@ -15,7 +15,7 @@ func RegistryServer(app *cli.MultipleProgram) {
 				Usage:   "server port",
 				Aliases: []string{"p"},
 				EnvVars: []string{"PORT"},
-				Value:   8080,
+				Value:   8024,
 			},
 			&cli.StringFlag{
 				Name:    "init-command",
