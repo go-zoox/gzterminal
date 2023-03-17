@@ -15,7 +15,13 @@ func RegistryServer(app *cli.MultipleProgram) {
 				Usage:   "server port",
 				Aliases: []string{"p"},
 				EnvVars: []string{"PORT"},
-				Value:   8024,
+				Value:   8838,
+			},
+			&cli.StringFlag{
+				Name:    "shell",
+				Usage:   "specify terminal shell",
+				Aliases: []string{"s"},
+				EnvVars: []string{"SHELL"},
 			},
 			&cli.StringFlag{
 				Name:    "init-command",
@@ -39,6 +45,7 @@ func RegistryServer(app *cli.MultipleProgram) {
 
 			return server.Serve(&server.Config{
 				Port:        ctx.Int64("port"),
+				Shell:       ctx.String("shell"),
 				InitCommand: ctx.String("init-command"),
 				Username:    Username,
 				Password:    Password,

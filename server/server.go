@@ -24,6 +24,7 @@ type Server interface {
 
 type Config struct {
 	Port        int64
+	Shell       string
 	InitCommand string
 	Username    string
 	Password    string
@@ -64,7 +65,7 @@ func (s *server) Run(cfg *Config) error {
 	}
 
 	app.WebSocket("/ws", func(ctx *zoox.Context, client *websocket.WebSocketClient) {
-		userShell := os.Getenv("SHELL")
+		userShell := cfg.Shell
 		userContext := fs.CurrentDir()
 		if userShell == "" {
 			userShell = "sh"
