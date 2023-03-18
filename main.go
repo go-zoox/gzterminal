@@ -14,6 +14,8 @@ func main() {
 
 	// server
 	commands.RegistryServer(app)
+	// client
+	commands.RegistryClient(app)
 
 	app.Run()
 }

@@ -145,12 +145,18 @@ func (s *server) Run(cfg *Config) error {
 		cmd := exec.Command("sh", "-c", command)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			ctx.Logger.Errorf("[exec] failed to run command: %s (err: %s)", command, err)
+			ctx.Logger.Errorf("[exec] failed to run command: %s (output: %s, err: %s)", command, output, err)
 
-			ctx.Fail(fmt.Errorf("failed to run command: %s (err: %s)", command, err), 400003, fmt.Sprintf("failed to run command command: %s (err: %s)", command, err))
+			ctx.JSON(400, zoox.H{
+				"code":         400003,
+				"message":      fmt.Sprintf("failed to run command command: %s (err: %s)", command, err),
+				"exit_code":    cmd.ProcessState.ExitCode(),
+				"exit_message": string(output),
+			})
 			return
 		}
 
+		// output, err := cmd.CombinedOutput()
 		ctx.Logger.Infof("[exec] success to run command: %s", command)
 		ctx.String(200, "%s", output)
 	})
