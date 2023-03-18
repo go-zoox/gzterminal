@@ -105,21 +105,25 @@ func (s *server) Run(cfg *Config) error {
 		client.OnTextMessage = func(msg []byte) {
 			messageType := msg[0]
 			messageData := msg[1:]
-			switch messageType {
-			//
-			case '2':
-				// resize
-				var resize Resize
-				err := json.Unmarshal(messageData, &resize)
-				if err != nil {
+
+			// 2. custom command
+			if len(messageData) != 0 {
+				// 2.1 resize
+				if messageType == '2' {
+					var resize Resize
+					err := json.Unmarshal(messageData, &resize)
+					if err != nil {
+						return
+					}
+
+					//
+					setWindowSize(tty, resize.Columns, resize.Rows)
 					return
 				}
-				//
-				setWindowSize(tty, resize.Columns, resize.Rows)
-			default:
-				// command
-				tty.Write(msg)
 			}
+
+			// 1. user input
+			tty.Write(msg)
 		}
 	})
 
