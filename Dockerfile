@@ -11,15 +11,15 @@ RUN go mod download
 
 COPY . .
 
-RUN GOOS=linux \
-  GOARCH=amd64 \
+RUN CGO_EABLE=0 \
+  GOOS=linux \
   go build \
   -trimpath \
   -ldflags '-w -s -buildid=' \
   -v -o gzterminal
 
 # Server
-FROM whatwewant/go:v1.19-1
+FROM whatwewant/alpine:v3.17-1
 
 LABEL MAINTAINER="Zero<tobewhatwewant@gmail.com>"
 
