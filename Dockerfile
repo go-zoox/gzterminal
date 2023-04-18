@@ -1,7 +1,11 @@
 # Builder
-FROM whatwewant/builder-go:v1.20-1 as builder
+FROM --platform=$BUILDPLATFORM whatwewant/builder-go:v1.20-1 as builder
 
 WORKDIR /build
+
+ARG TARGETOS
+
+ARG TARGETARCH
 
 COPY go.mod ./
 
@@ -12,7 +16,8 @@ RUN go mod download
 COPY . .
 
 RUN CGO_EABLE=0 \
-  GOOS=linux \
+  GOOS=${TARGETOS} \
+  GOARCH=${TARGETARCH} \
   go build \
   -trimpath \
   -ldflags '-w -s -buildid=' \
