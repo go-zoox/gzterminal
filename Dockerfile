@@ -1,11 +1,7 @@
 # Builder
-FROM --platform=$BUILDPLATFORM whatwewant/builder-go:v1.20-1 as builder
+FROM whatwewant/builder-go:v1.20-1 as builder
 
 WORKDIR /build
-
-ARG TARGETOS
-
-ARG TARGETARCH
 
 COPY go.mod ./
 
@@ -15,9 +11,7 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_EABLE=0 \
-  GOOS=${TARGETOS} \
-  GOARCH=${TARGETARCH} \
+RUN CGO_ENABLED=0 \
   go build \
   -trimpath \
   -ldflags '-w -s -buildid=' \
@@ -35,6 +29,8 @@ ARG VERSION=latest
 ENV MODE=production
 
 COPY --from=builder /build/gzterminal /bin
+
+RUN gzterminal --version
 
 ENV VERSION=${VERSION}
 
