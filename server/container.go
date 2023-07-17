@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/docker/docker/api/types"
@@ -10,10 +9,9 @@ import (
 	dockerClient "github.com/docker/docker/client"
 	"github.com/go-zoox/logger"
 	"github.com/go-zoox/uuid"
-	"github.com/go-zoox/zoox/components/application/websocket"
 )
 
-func connectContainer(ctx context.Context, cfg *Config, client *websocket.Client) (cleanup func(), err error) {
+func connectContainer(ctx context.Context, cfg *Config) (session Session, err error) {
 	c, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv)
 	if err != nil {
 		return nil, err
@@ -50,48 +48,14 @@ func connectContainer(ctx context.Context, cfg *Config, client *websocket.Client
 		return nil, err
 	}
 
-	cleanup = func() {
-		logger.Infof("close stream")
-		stream.Close()
-		logger.Infof("stop container")
-		c.ContainerRemove(ctx, containerID, types.ContainerRemoveOptions{
-			Force: true,
-		})
+	rct := &ResizableContainerTerminal{
+		Ctx:         ctx,
+		Client:      c,
+		ContainerID: containerID,
+		ReadCh:      make(chan []byte),
+		Stream:      stream,
 	}
-
-	client.OnTextMessage = func(msg []byte) {
-		messageType := msg[0]
-		messageData := msg[1:]
-
-		// 2. custom command
-		if len(messageData) != 0 {
-			// 2.1 resize
-			if messageType == '2' {
-				var resize Resize
-				err := json.Unmarshal(messageData, &resize)
-				if err != nil {
-					return
-				}
-
-				//
-				err = c.ContainerResize(ctx, containerID, types.ResizeOptions{
-					Height: uint(resize.Rows),
-					Width:  uint(resize.Columns),
-				})
-				if err != nil {
-					fmt.Println("resize container error:", err)
-					return
-				}
-				return
-			}
-		}
-
-		// 1. user input
-		_, err = stream.Conn.Write(msg)
-		if err != nil {
-			logger.Errorf("Failed to write to pty master: %s", err)
-		}
-	}
+	session = rct
 
 	go func() {
 		buf := make([]byte, 128)
@@ -102,7 +66,8 @@ func connectContainer(ctx context.Context, cfg *Config, client *websocket.Client
 				return
 			}
 
-			client.WriteBinary(buf[:n])
+			// client.WriteBinary(buf[:n])
+			rct.ReadCh <- buf[:n]
 		}
 	}()
 
@@ -112,18 +77,55 @@ func connectContainer(ctx context.Context, cfg *Config, client *websocket.Client
 		case err := <-errC:
 			if err != nil {
 				logger.Errorf("Failed to wait container: %s", err)
-				client.Disconnect()
 				return
 			}
 
 		case result := <-resultC:
 			if result.StatusCode != 0 {
 				logger.Errorf("Container exited with non-zero status: %d", result.StatusCode)
-				client.Disconnect()
 				return
 			}
 		}
 	}()
 
 	return
+}
+
+type ResizableContainerTerminal struct {
+	Ctx         context.Context
+	Client      *dockerClient.Client
+	ContainerID string
+	ReadCh      chan []byte
+	Stream      types.HijackedResponse
+}
+
+func (rct *ResizableContainerTerminal) Close() error {
+	if err := rct.Stream.CloseWrite(); err != nil {
+		return err
+	}
+
+	return rct.Client.ContainerRemove(rct.Ctx, rct.ContainerID, types.ContainerRemoveOptions{
+		Force: true,
+	})
+}
+
+func (rct *ResizableContainerTerminal) Read(p []byte) (n int, err error) {
+	return copy(p, <-rct.ReadCh), nil
+}
+
+func (rct *ResizableContainerTerminal) Write(p []byte) (n int, err error) {
+	n, err = rct.Stream.Conn.Write(p)
+	if err != nil {
+		logger.Errorf("Failed to write to pty master: %s", err)
+		return 0, err
+	}
+
+	return
+}
+
+func (rct *ResizableContainerTerminal) Resize(w, h int) error {
+	return rct.Client.ContainerResize(rct.Ctx, rct.ContainerID, types.ResizeOptions{
+		Height: uint(h),
+		Width:  uint(w),
+	})
 }

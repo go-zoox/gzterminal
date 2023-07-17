@@ -2,17 +2,16 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"os/exec"
+	"syscall"
+	"unsafe"
 
 	"github.com/creack/pty"
 	"github.com/go-zoox/fs"
-	"github.com/go-zoox/logger"
-	"github.com/go-zoox/zoox/components/application/websocket"
 )
 
-func connectHost(ctx context.Context, cfg *Config, client *websocket.Client) (cleanup func(), err error) {
+func connectHost(ctx context.Context, cfg *Config) (session Session, err error) {
 	userShell := cfg.Shell
 	userContext := fs.CurrentDir()
 	if userShell == "" {
@@ -27,47 +26,22 @@ func connectHost(ctx context.Context, cfg *Config, client *websocket.Client) (cl
 	if err != nil {
 		return nil, err
 	}
-	cleanup = func() {
-		terminal.Close()
-	}
 
-	go func() {
-		buf := make([]byte, 128)
-		for {
-			n, err := terminal.Read(buf)
-			if err != nil {
-				logger.Errorf("Failed to read from pty master: %s", err)
-				client.WriteText([]byte(err.Error()))
-				return
-			}
+	return &ResizableHostTerminal{
+		File: terminal,
+	}, nil
+}
 
-			client.WriteBinary(buf[:n])
-		}
-	}()
+type ResizableHostTerminal struct {
+	*os.File
+}
 
-	client.OnTextMessage = func(msg []byte) {
-		messageType := msg[0]
-		messageData := msg[1:]
-
-		// 2. custom command
-		if len(messageData) != 0 {
-			// 2.1 resize
-			if messageType == '2' {
-				var resize Resize
-				err := json.Unmarshal(messageData, &resize)
-				if err != nil {
-					return
-				}
-
-				//
-				setWindowSize(terminal, resize.Columns, resize.Rows)
-				return
-			}
-		}
-
-		// 1. user input
-		terminal.Write(msg)
-	}
-
-	return
+func (rt *ResizableHostTerminal) Resize(w, h int) error {
+	_, _, err := syscall.Syscall(
+		syscall.SYS_IOCTL,
+		rt.Fd(),
+		uintptr(syscall.TIOCSWINSZ),
+		uintptr(unsafe.Pointer(&struct{ h, w, x, y uint16 }{uint16(h), uint16(w), 0, 0})),
+	)
+	return err
 }

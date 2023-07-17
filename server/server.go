@@ -1,11 +1,10 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
-	"os"
-	"syscall"
-	"unsafe"
 
+	"github.com/go-zoox/logger"
 	"github.com/go-zoox/zoox"
 	"github.com/go-zoox/zoox/components/application/websocket"
 	"github.com/go-zoox/zoox/defaults"
@@ -62,33 +61,67 @@ func (s *server) Run() error {
 	}
 
 	app.WebSocket("/ws", func(ctx *zoox.Context, client *websocket.Client) {
-		var cleanup func()
+		var session Session
 		var err error
 		client.OnDisconnect = func() {
-			if cleanup != nil {
-				cleanup()
+			if session != nil {
+				session.Close()
 			}
 		}
 
+		client.OnTextMessage = func(msg []byte) {
+			messageType := msg[0]
+			messageData := msg[1:]
+
+			// 2. custom command
+			if len(messageData) != 0 {
+				// 2.1 resize
+				if messageType == '2' {
+					var resize Resize
+					err := json.Unmarshal(messageData, &resize)
+					if err != nil {
+						return
+					}
+
+					//
+					session.Resize(resize.Rows, resize.Columns)
+					return
+				}
+			}
+
+			// 1. user input
+			session.Write(msg)
+		}
+
 		if cfg.Mode == "host" {
-			if cleanup, err = connectHost(ctx.Context(), cfg, client); err != nil {
+			if session, err = connectHost(ctx.Context(), cfg); err != nil {
 				ctx.Logger.Errorf("[websocket] failed to connect host: %s", err)
 				client.Disconnect()
 				return
 			}
-			return
-		}
-
-		if cfg.Mode == "container" {
-			if cleanup, err = connectContainer(ctx.Context(), cfg, client); err != nil {
+		} else if cfg.Mode == "container" {
+			if session, err = connectContainer(ctx.Context(), cfg); err != nil {
 				ctx.Logger.Errorf("[websocket] failed to connect container: %s", err)
 				client.Disconnect()
 				return
 			}
-			return
+		} else {
+			panic(fmt.Errorf("unknown mode: %s", cfg.Mode))
 		}
 
-		panic(fmt.Errorf("unknown mode: %s", cfg.Mode))
+		go func() {
+			buf := make([]byte, 128)
+			for {
+				n, err := session.Read(buf)
+				if err != nil {
+					logger.Errorf("Failed to read from session: %s", err)
+					client.WriteText([]byte(err.Error()))
+					return
+				}
+
+				client.WriteBinary(buf[:n])
+			}
+		}()
 	})
 
 	app.Get("/", func(ctx *zoox.Context) {
@@ -104,13 +137,4 @@ func (s *server) Run() error {
 type Resize struct {
 	Columns int `json:"cols"`
 	Rows    int `json:"rows"`
-}
-
-func setWindowSize(f *os.File, w, h int) {
-	syscall.Syscall(
-		syscall.SYS_IOCTL,
-		f.Fd(),
-		uintptr(syscall.TIOCSWINSZ),
-		uintptr(unsafe.Pointer(&struct{ h, w, x, y uint16 }{uint16(h), uint16(w), 0, 0})),
-	)
 }
