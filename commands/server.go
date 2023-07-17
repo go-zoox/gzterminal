@@ -43,13 +43,14 @@ func RegistryServer(app *cli.MultipleProgram) {
 			Username := ctx.String("username")
 			Password := ctx.String("password")
 
-			return server.Serve(&server.Config{
-				Port:        ctx.Int64("port"),
-				Shell:       ctx.String("shell"),
-				InitCommand: ctx.String("init-command"),
-				Username:    Username,
-				Password:    Password,
+			s := server.New(&server.Config{
+				Port:     ctx.Int64("port"),
+				Shell:    ctx.String("shell"),
+				Username: Username,
+				Password: Password,
 			})
+
+			return s.Run()
 		},
 	})
 }

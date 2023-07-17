@@ -43,6 +43,10 @@ func RenderXTerm(data zoox.H) string {
 		<body>
 			<div id="terminal"></div>
 			<script>
+				var msgType = {
+					MsgData: '1',
+					MsgResize: '2',
+				};
 				var config = %s;
 
 				var url = new URL(window.location.href);
@@ -52,39 +56,19 @@ func RenderXTerm(data zoox.H) string {
 				if (query.get('title') && document.querySelector('title')) {
 					document.querySelector('title').innerText = query.get('title');
 				}
-
-				var ws = new WebSocket(protocol + '://' + url.host + config.wsPath);
 				var term = new Terminal({
 					fontFamily: 'Menlo, Monaco, "Courier New", monospace',
 					fontWeight: 400,
 					fontSize: 14,
-					// rows: 200,
 				});
-				var attachAddon = new AttachAddon.AttachAddon(ws);
 				var fitAddon = new FitAddon.FitAddon();
-				var msgType = {
-					MsgData: '1',
-					MsgResize: '2',
-				};
-
-				term.loadAddon(attachAddon);
 				term.loadAddon(fitAddon);
-		
-				term.onResize(({ cols, rows }) => {
-					// nodejs
-					// ws.send(JSON.stringify([
-					// 	'resize',
-					// 	{ cols, rows },
-					// ]));
 
-					// go
-					ws.send(msgType.MsgResize + JSON.stringify({ cols, rows }));
-				});
-
- 				// term.onKey((event) => {
-        //     ws.send(msgType.MsgData + event.key);
-        // })
-
+				var ws = new WebSocket(protocol + '://' + url.host + config.wsPath);
+				ws.binaryType = 'arraybuffer';
+				ws.onclose = () => {
+					term.write('\r\n\x1b[31mConnection Closed.\x1b[m\r\n');
+				};
 				ws.onopen = () => {
 					term.open(document.getElementById('terminal'));
 					fitAddon.fit();
@@ -95,18 +79,23 @@ func RenderXTerm(data zoox.H) string {
 
 					term.focus();
 				}
+				ws.onmessage = evt => {
+					const data = evt.data;
+					term.write(typeof data === 'string' ? data : new Uint8Array(data));
+				};
+		
+				term.onResize(({ cols, rows }) => {
+					ws.send(msgType.MsgResize + JSON.stringify({ cols, rows }));
+				});
 
-				ws.onclose = () => {
-					terminal.write("\r\ngzterminal Client Quit!")
-					
-					if (confirm('WebSocket Disconnect, Try to reconnect ?')) {
-						window.location.reload();
-					}
-				}
+				term.onData((data) => {
+					ws.send(data);
+				})
 
 				window.addEventListener("resize", () =>{
           fitAddon.fit()
-        }, false)
+        }, false);
+
 			</script>
 		</body>
 	</html>`, jd)
