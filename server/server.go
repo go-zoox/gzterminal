@@ -92,7 +92,10 @@ func (s *server) Run() error {
 					}
 
 					//
-					session.Resize(resize.Rows, resize.Columns)
+					err = session.Resize(resize.Rows, resize.Columns)
+					if err != nil {
+						logger.Errorf("Failed to resize terminal: %s", err)
+					}
 					return
 				}
 			}
