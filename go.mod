@@ -10,7 +10,7 @@ require (
 	github.com/go-zoox/fs v1.3.13
 	github.com/go-zoox/logger v1.4.4
 	github.com/go-zoox/uuid v0.0.1
-	github.com/go-zoox/zoox v1.10.13
+	github.com/go-zoox/zoox v1.10.14
 )
 
 require (
@@ -85,4 +85,4 @@ require (
 	gotest.tools/v3 v3.5.0 // indirect
 )
 
-replace github.com/go-zoox/zoox => ../zoox
+// replace github.com/go-zoox/zoox => ../zoox
