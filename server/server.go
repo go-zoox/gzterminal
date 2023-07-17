@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/go-zoox/gzterminal/server/container"
+	"github.com/go-zoox/gzterminal/server/session"
 	"github.com/go-zoox/logger"
 	"github.com/go-zoox/zoox"
 	"github.com/go-zoox/zoox/components/application/websocket"
@@ -19,8 +21,8 @@ type Config struct {
 	Shell    string
 	Username string
 	Password string
-	//
-	Mode string
+	// Container is the Container runtime, options: host, docker, kubernetes, ssh, default: host
+	Container string
 }
 
 type server struct {
@@ -28,8 +30,8 @@ type server struct {
 }
 
 func New(cfg *Config) Server {
-	if cfg.Mode == "" {
-		cfg.Mode = "container"
+	if cfg.Container == "" {
+		cfg.Container = "host"
 	}
 
 	return &server{
@@ -61,7 +63,7 @@ func (s *server) Run() error {
 	}
 
 	app.WebSocket("/ws", func(ctx *zoox.Context, client *websocket.Client) {
-		var session Session
+		var session session.Session
 		var err error
 		client.OnDisconnect = func() {
 			if session != nil {
@@ -93,20 +95,22 @@ func (s *server) Run() error {
 			session.Write(msg)
 		}
 
-		if cfg.Mode == "host" {
-			if session, err = connectHost(ctx.Context(), cfg); err != nil {
+		if cfg.Container == "host" {
+			if session, err = container.Host(ctx.Context(), &container.HostConfig{
+				Shell: cfg.Shell,
+			}); err != nil {
 				ctx.Logger.Errorf("[websocket] failed to connect host: %s", err)
 				client.Disconnect()
 				return
 			}
-		} else if cfg.Mode == "container" {
-			if session, err = connectContainer(ctx.Context(), cfg); err != nil {
+		} else if cfg.Container == "docker" {
+			if session, err = container.Docker(ctx.Context()); err != nil {
 				ctx.Logger.Errorf("[websocket] failed to connect container: %s", err)
 				client.Disconnect()
 				return
 			}
 		} else {
-			panic(fmt.Errorf("unknown mode: %s", cfg.Mode))
+			panic(fmt.Errorf("unknown mode: %s", cfg.Container))
 		}
 
 		go func() {

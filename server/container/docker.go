@@ -1,4 +1,4 @@
-package server
+package container
 
 import (
 	"context"
@@ -7,11 +7,12 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	dockerClient "github.com/docker/docker/client"
+	"github.com/go-zoox/gzterminal/server/session"
 	"github.com/go-zoox/logger"
 	"github.com/go-zoox/uuid"
 )
 
-func connectContainer(ctx context.Context, cfg *Config) (session Session, err error) {
+func Docker(ctx context.Context) (session session.Session, err error) {
 	c, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv)
 	if err != nil {
 		return nil, err
@@ -123,9 +124,10 @@ func (rct *ResizableContainerTerminal) Write(p []byte) (n int, err error) {
 	return
 }
 
-func (rct *ResizableContainerTerminal) Resize(w, h int) error {
+func (rct *ResizableContainerTerminal) Resize(rows, cols int) error {
+	fmt.Println("Resize", rows, cols)
 	return rct.Client.ContainerResize(rct.Ctx, rct.ContainerID, types.ResizeOptions{
-		Height: uint(h),
-		Width:  uint(w),
+		Height: uint(rows),
+		Width:  uint(cols),
 	})
 }

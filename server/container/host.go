@@ -1,4 +1,4 @@
-package server
+package container
 
 import (
 	"context"
@@ -9,13 +9,18 @@ import (
 
 	"github.com/creack/pty"
 	"github.com/go-zoox/fs"
+	"github.com/go-zoox/gzterminal/server/session"
 )
 
-func connectHost(ctx context.Context, cfg *Config) (session Session, err error) {
-	userShell := cfg.Shell
+type HostConfig struct {
+	Shell string
+}
+
+func Host(ctx context.Context, cfg *HostConfig) (session session.Session, err error) {
+	userShell := "sh"
 	userContext := fs.CurrentDir()
-	if userShell == "" {
-		userShell = "sh"
+	if cfg.Shell != "" {
+		userShell = cfg.Shell
 	}
 
 	shell := exec.Command(userShell)
@@ -36,12 +41,12 @@ type ResizableHostTerminal struct {
 	*os.File
 }
 
-func (rt *ResizableHostTerminal) Resize(w, h int) error {
+func (rt *ResizableHostTerminal) Resize(rows, cols int) error {
 	_, _, err := syscall.Syscall(
 		syscall.SYS_IOCTL,
 		rt.Fd(),
 		uintptr(syscall.TIOCSWINSZ),
-		uintptr(unsafe.Pointer(&struct{ h, w, x, y uint16 }{uint16(h), uint16(w), 0, 0})),
+		uintptr(unsafe.Pointer(&struct{ h, w, x, y uint16 }{uint16(rows), uint16(cols), 0, 0})),
 	)
 	return err
 }

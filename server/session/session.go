@@ -1,4 +1,4 @@
-package server
+package session
 
 import "io"
 
@@ -6,5 +6,5 @@ type Session interface {
 	io.ReadWriteCloser
 	//
 
-	Resize(cols, rows int) error
+	Resize(rows, cols int) error
 }
