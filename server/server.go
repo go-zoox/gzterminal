@@ -23,6 +23,8 @@ type Config struct {
 	Password string
 	// Container is the Container runtime, options: host, docker, kubernetes, ssh, default: host
 	Container string
+	//
+	Path string
 }
 
 type server struct {
@@ -32,6 +34,10 @@ type server struct {
 func New(cfg *Config) Server {
 	if cfg.Container == "" {
 		cfg.Container = "host"
+	}
+
+	if cfg.Path == "" {
+		cfg.Path = "/ws"
 	}
 
 	return &server{
@@ -62,7 +68,7 @@ func (s *server) Run() error {
 		})
 	}
 
-	app.WebSocket("/ws", func(ctx *zoox.Context, client *websocket.Client) {
+	app.WebSocket(cfg.Path, func(ctx *zoox.Context, client *websocket.Client) {
 		var session session.Session
 		var err error
 		client.OnDisconnect = func() {
@@ -130,7 +136,7 @@ func (s *server) Run() error {
 
 	app.Get("/", func(ctx *zoox.Context) {
 		ctx.HTML(200, RenderXTerm(zoox.H{
-			"wsPath": "/ws",
+			"wsPath": cfg.Path,
 			// "welcomeMessage": "custom welcome message",
 		}))
 	})
