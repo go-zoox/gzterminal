@@ -91,8 +91,6 @@ func RenderXTerm(data zoox.H) string {
 
 					if (!!config.welcomeMessage) {
 						term.write(config.welcomeMessage + " \r\n")
-					} else {
-						term.write("Welcome to gzterminal in web browser \r\n")
 					}
 
 					term.focus();
