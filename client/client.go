@@ -94,7 +94,7 @@ func (c *client) Connect() error {
 	// listen
 	go func() {
 		for {
-			_, message, err := conn.ReadMessage()
+			messageType, rawMsg, err := conn.ReadMessage()
 			if err != nil {
 				// if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
 				// 	return
@@ -112,25 +112,25 @@ func (c *client) Connect() error {
 				return
 			}
 
-			c.stdout.Write(message)
+			if messageType != websocket.BinaryMessage {
+				c.stderr.Write([]byte(fmt.Sprintf("only binary message is supported: %d\n", messageType)))
+				continue
+			}
 
-			// switch message[0] {
-			// case entities.MessageCommandStdout:
-			// 	c.stdout.Write(message[1:])
-			// case entities.MessageCommandStderr:
-			// 	c.stderr.Write(message[1:])
-			// case entities.MessageCommandExitCode:
-			// 	c.exitCode <- int(message[1])
-			// case entities.MessageAuthResponseFailure:
-			// 	c.stderr.Write(message[1:])
-			// 	// c.exitCode <- 1
-			// 	errCh <- &ExitError{
-			// 		ExitCode: 1,
-			// 		Message:  string(message[1:]),
-			// 	}
-			// case entities.MessageAuthResponseSuccess:
-			// 	errCh <- nil
-			// }
+			// c.stdout.Write(rawMsg)
+
+			msg, err := message.Deserialize(rawMsg)
+			if err != nil {
+				c.stderr.Write([]byte(fmt.Sprintf("failed to deserialize message: %s\n", err)))
+				continue
+			}
+
+			switch msg.Type() {
+			case message.TypeOutput:
+				c.stdout.Write(msg.Output())
+			default:
+				c.stderr.Write([]byte(fmt.Sprintf("unknown message type: %s\n", msg.Type())))
+			}
 		}
 	}()
 

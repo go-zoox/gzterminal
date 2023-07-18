@@ -132,12 +132,20 @@ func (s *server) Run() error {
 			for {
 				n, err := session.Read(buf)
 				if err != nil {
-					logger.Errorf("Failed to read from session: %s", err)
-					client.WriteText([]byte(err.Error()))
+					logger.Errorf("failed to read from session: %s", err)
+					client.WriteMessage(websocket.BinaryMessage, []byte(err.Error()))
 					return
 				}
 
-				client.WriteBinary(buf[:n])
+				msg := &message.Message{}
+				msg.SetType(message.TypeOutput)
+				msg.SetOutput(buf[:n])
+				if err := msg.Serialize(); err != nil {
+					logger.Errorf("failed to serialize message: %s", err)
+					return
+				}
+
+				client.WriteMessage(websocket.BinaryMessage, msg.Msg())
 			}
 		}()
 	})

@@ -17,6 +17,9 @@ const (
 
 	// Initialize ...
 	TypeInitialize Type = '5'
+
+	// Output ...
+	TypeOutput Type = '6'
 )
 
 func (m *Message) Type() Type {

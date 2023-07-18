@@ -11,6 +11,7 @@ type Message struct {
 	key    Key
 	resize *Resize
 	auth   *Auth
+	output Output
 }
 
 func (m *Message) data() []byte {
@@ -37,6 +38,8 @@ func (m *Message) Serialize() error {
 			return err
 		}
 		m.msg = append([]byte{byte(m.typ)}, auth...)
+	case TypeOutput:
+		m.msg = append([]byte{byte(m.typ)}, m.output...)
 	}
 
 	return nil
@@ -53,7 +56,6 @@ func Deserialize(rawMsg []byte) (msg *Message, err error) {
 		if err != nil {
 			return
 		}
-
 		msg.resize = resize
 	case TypeAuth:
 		auth := &Auth{}
@@ -61,6 +63,9 @@ func Deserialize(rawMsg []byte) (msg *Message, err error) {
 		if err != nil {
 			return
 		}
+		msg.auth = auth
+	case TypeOutput:
+		msg.output = msg.data()
 	}
 
 	return

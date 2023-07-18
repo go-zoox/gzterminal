@@ -46,6 +46,7 @@ func RenderXTerm(data zoox.H) string {
 				var messageType = {
 					Key: '1',
 					Resize: '2',
+					Output: '6',
 				};
 				var config = %s;
 
@@ -81,9 +82,11 @@ func RenderXTerm(data zoox.H) string {
 				}
 				window._data = [];
 				ws.onmessage = evt => {
-					const data = evt.data;
-					window._data.push(new Uint8Array(data));
-					term.write(typeof data === 'string' ? data : new Uint8Array(data));
+					var rawMsg = evt.data;
+					var typ = rawMsg[0];
+					var payload = rawMsg.slice(1);
+					
+					term.write(typeof rawMsg === 'string' ? payload : new Uint8Array(payload));
 				};
 		
 				term.onResize(({ cols, rows }) => {

@@ -18,6 +18,7 @@ type ResizableContainerTerminal struct {
 	ReadCh      chan []byte
 	Stream      *types.HijackedResponse
 	//
+	exitCode int
 }
 
 func (rct *ResizableContainerTerminal) Close() error {
@@ -65,9 +66,14 @@ func (rct *ResizableContainerTerminal) Wait() error {
 
 	case result := <-resultC:
 		if result.StatusCode != 0 {
+			rct.exitCode = int(result.StatusCode)
 			return fmt.Errorf("container exited with non-zero status: %d", result.StatusCode)
 		}
 	}
 
 	return nil
+}
+
+func (rct *ResizableContainerTerminal) ExitCode() int {
+	return rct.exitCode
 }
