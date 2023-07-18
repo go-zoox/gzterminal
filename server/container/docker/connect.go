@@ -3,6 +3,7 @@ package docker
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -20,7 +21,7 @@ func (d *docker) Connect(ctx context.Context) (session session.Session, err erro
 
 	res, err := c.ContainerCreate(ctx, &container.Config{
 		Image:        d.cfg.Image,
-		Cmd:          []string{"/bin/sh"},
+		Cmd:          []string{"/bin/bash"},
 		Tty:          true,
 		OpenStdin:    true,
 		AttachStdin:  true,
@@ -76,8 +77,9 @@ func (d *docker) Connect(ctx context.Context) (session session.Session, err erro
 		resultC, errC := c.ContainerWait(ctx, containerID, container.WaitConditionNotRunning)
 		select {
 		case err := <-errC:
-			if err != nil {
-				logger.Errorf("Failed to wait container: %s", err)
+			if err != nil && err != io.EOF {
+				fmt.Println(err)
+				logger.Errorf("Failed to wait container: %#v", err)
 				return
 			}
 

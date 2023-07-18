@@ -1,6 +1,13 @@
 package commands
 
 import (
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/eiannone/keyboard"
 	"github.com/go-zoox/cli"
 	"github.com/go-zoox/gzterminal/client"
 )
@@ -34,15 +41,78 @@ func RegistryClient(app *cli.MultipleProgram) {
 			},
 		},
 		Action: func(ctx *cli.Context) (err error) {
-			Username := ctx.String("username")
-			Password := ctx.String("password")
-
-			return client.Run(&client.Config{
+			c := client.New(&client.Config{
 				Server:   ctx.String("server"),
-				Exec:     ctx.String("exec"),
-				Username: Username,
-				Password: Password,
+				Username: ctx.String("username"),
+				Password: ctx.String("password"),
 			})
+
+			if err := c.Connect(); err != nil {
+				return err
+			}
+
+			// resize
+			if err := c.Resize(); err != nil {
+				return err
+			}
+
+			// 监听操作系统信号
+			sigWinch := make(chan os.Signal, 1)
+			signal.Notify(sigWinch, syscall.SIGWINCH)
+			// 启动循环来检测终端窗口大小是否发生变化
+			go func() {
+				for {
+					select {
+					case <-sigWinch:
+						c.Resize()
+					default:
+						time.Sleep(time.Millisecond * 100)
+					}
+				}
+			}()
+
+			if err := keyboard.Open(); err != nil {
+				return err
+			}
+			defer func() {
+				_ = keyboard.Close()
+			}()
+
+			for {
+				char, key, err := keyboard.GetKey()
+				if err != nil {
+					return err
+				}
+
+				// fmt.Printf("You pressed: rune:%q, key %X\r\n", char, key)
+				if key == keyboard.KeyCtrlC {
+					break
+				}
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err)
+				}
+
+				if key == 0 {
+					err = c.Send(string(char))
+					if err != nil {
+						fmt.Fprintln(os.Stderr, err)
+					}
+				} else {
+					// if key == keyboard.KeyBackspace2 {
+					// 	err = c.Send("\x7F")
+					// 	if err != nil {
+					// 		fmt.Fprintln(os.Stderr, err)
+					// 	}
+					// }
+					err = c.Send(string([]byte{byte(key)}))
+					if err != nil {
+						fmt.Fprintln(os.Stderr, err)
+					}
+				}
+
+			}
+
+			return
 		},
 	})
 }
