@@ -1,9 +1,9 @@
 package server
 
 import (
-	"encoding/json"
 	"fmt"
 
+	"github.com/go-zoox/gzterminal/message"
 	"github.com/go-zoox/gzterminal/server/container/docker"
 	"github.com/go-zoox/gzterminal/server/container/host"
 	"github.com/go-zoox/gzterminal/server/session"
@@ -78,31 +78,25 @@ func (s *server) Run() error {
 			}
 		}
 
-		client.OnTextMessage = func(msg []byte) {
-			messageType := msg[0]
-			messageData := msg[1:]
-
-			// 2. custom command
-			if len(messageData) != 0 {
-				// 2.1 resize
-				if messageType == '2' {
-					var resize Resize
-					err := json.Unmarshal(messageData, &resize)
-					if err != nil {
-						return
-					}
-
-					//
-					err = session.Resize(resize.Rows, resize.Columns)
-					if err != nil {
-						logger.Errorf("Failed to resize terminal: %s", err)
-					}
-					return
-				}
+		client.OnTextMessage = func(rawMsg []byte) {
+			msg, err := message.Deserialize(rawMsg)
+			if err != nil {
+				logger.Errorf("Failed to deserialize message: %s", err)
+				return
 			}
 
-			// 1. user input
-			session.Write(msg)
+			switch msg.Type() {
+			case message.TypeKey:
+				session.Write(msg.Key())
+			case message.TypeResize:
+				resize := msg.Resize()
+				err = session.Resize(resize.Rows, resize.Columns)
+				if err != nil {
+					logger.Errorf("Failed to resize terminal: %s", err)
+				}
+			default:
+				logger.Errorf("Unknown message type: %d", msg.Type())
+			}
 		}
 
 		if cfg.Container == "host" {
@@ -126,7 +120,15 @@ func (s *server) Run() error {
 		}
 
 		go func() {
-			buf := make([]byte, 128)
+			if err := session.Wait(); err != nil {
+				logger.Errorf("Failed to wait session: %s", err)
+			}
+
+			client.Disconnect()
+		}()
+
+		go func() {
+			buf := make([]byte, 1024)
 			for {
 				n, err := session.Read(buf)
 				if err != nil {

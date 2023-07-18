@@ -7,4 +7,5 @@ type Session interface {
 	//
 
 	Resize(rows, cols int) error
+	Wait() error
 }

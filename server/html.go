@@ -43,9 +43,9 @@ func RenderXTerm(data zoox.H) string {
 		<body>
 			<div id="terminal"></div>
 			<script>
-				var msgType = {
-					MsgData: '1',
-					MsgResize: '2',
+				var messageType = {
+					Key: '1',
+					Resize: '2',
 				};
 				var config = %s;
 
@@ -79,17 +79,19 @@ func RenderXTerm(data zoox.H) string {
 
 					term.focus();
 				}
+				window._data = [];
 				ws.onmessage = evt => {
 					const data = evt.data;
+					window._data.push(new Uint8Array(data));
 					term.write(typeof data === 'string' ? data : new Uint8Array(data));
 				};
 		
 				term.onResize(({ cols, rows }) => {
-					ws.send(msgType.MsgResize + JSON.stringify({ cols, rows }));
+					ws.send(messageType.Resize + JSON.stringify({ cols, rows }));
 				});
 
 				term.onData((data) => {
-					ws.send(data);
+					ws.send(messageType.Key + data);
 				})
 
 				window.addEventListener("resize", () =>{

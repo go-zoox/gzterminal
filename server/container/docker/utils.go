@@ -2,8 +2,11 @@ package docker
 
 import (
 	"context"
+	"fmt"
+	"io"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	dockerClient "github.com/docker/docker/client"
 	"github.com/go-zoox/logger"
 )
@@ -13,13 +16,16 @@ type ResizableContainerTerminal struct {
 	Client      *dockerClient.Client
 	ContainerID string
 	ReadCh      chan []byte
-	Stream      types.HijackedResponse
+	Stream      *types.HijackedResponse
+	//
 }
 
 func (rct *ResizableContainerTerminal) Close() error {
-	if err := rct.Stream.CloseWrite(); err != nil {
-		return err
-	}
+	// if err := rct.Stream.CloseWrite(); err != nil {
+	// 	return err
+	// }
+
+	rct.Stream.Close()
 
 	return rct.Client.ContainerRemove(rct.Ctx, rct.ContainerID, types.ContainerRemoveOptions{
 		Force: true,
@@ -45,4 +51,23 @@ func (rct *ResizableContainerTerminal) Resize(rows, cols int) error {
 		Height: uint(rows),
 		Width:  uint(cols),
 	})
+}
+
+func (rct *ResizableContainerTerminal) Wait() error {
+	resultC, errC := rct.Client.ContainerWait(rct.Ctx, rct.ContainerID, container.WaitConditionNotRunning)
+	select {
+	case err := <-errC:
+		if err != nil && err != io.EOF {
+			return fmt.Errorf("container exit error: %#v", err)
+		}
+
+		logger.Infof("container exited")
+
+	case result := <-resultC:
+		if result.StatusCode != 0 {
+			return fmt.Errorf("container exited with non-zero status: %d", result.StatusCode)
+		}
+	}
+
+	return nil
 }

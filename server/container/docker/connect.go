@@ -3,13 +3,11 @@ package docker
 import (
 	"context"
 	"fmt"
-	"io"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	dockerClient "github.com/docker/docker/client"
 	"github.com/go-zoox/gzterminal/server/session"
-	"github.com/go-zoox/logger"
 	"github.com/go-zoox/uuid"
 )
 
@@ -44,7 +42,7 @@ func (d *docker) Connect(ctx context.Context) (session session.Session, err erro
 		Stdin:  true,
 		Stdout: true,
 		Stderr: true,
-		Logs:   true,
+		// Logs:   true,
 	})
 	if err != nil {
 		return nil, err
@@ -55,39 +53,19 @@ func (d *docker) Connect(ctx context.Context) (session session.Session, err erro
 		Client:      c,
 		ContainerID: containerID,
 		ReadCh:      make(chan []byte),
-		Stream:      stream,
+		Stream:      &stream,
 	}
 	session = rct
 
 	go func() {
-		buf := make([]byte, 128)
 		for {
-			n, err := stream.Reader.Read(buf)
+			buf := make([]byte, 1024)
+			n, err := stream.Conn.Read(buf)
 			if err != nil {
-				// client.WriteText([]byte(err.Error()))
 				return
 			}
 
-			// client.WriteBinary(buf[:n])
 			rct.ReadCh <- buf[:n]
-		}
-	}()
-
-	go func() {
-		resultC, errC := c.ContainerWait(ctx, containerID, container.WaitConditionNotRunning)
-		select {
-		case err := <-errC:
-			if err != nil && err != io.EOF {
-				fmt.Println(err)
-				logger.Errorf("Failed to wait container: %#v", err)
-				return
-			}
-
-		case result := <-resultC:
-			if result.StatusCode != 0 {
-				logger.Errorf("Container exited with non-zero status: %d", result.StatusCode)
-				return
-			}
 		}
 	}()
 

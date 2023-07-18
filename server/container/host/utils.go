@@ -2,12 +2,14 @@ package host
 
 import (
 	"os"
+	"os/exec"
 
 	"github.com/creack/pty"
 )
 
 type ResizableHostTerminal struct {
 	*os.File
+	Cmd *exec.Cmd
 }
 
 func (rt *ResizableHostTerminal) Resize(rows, cols int) error {
@@ -15,12 +17,8 @@ func (rt *ResizableHostTerminal) Resize(rows, cols int) error {
 		Rows: uint16(rows),
 		Cols: uint16(cols),
 	})
+}
 
-	// _, _, err := syscall.Syscall(
-	// 	syscall.SYS_IOCTL,
-	// 	rt.Fd(),
-	// 	uintptr(syscall.TIOCSWINSZ),
-	// 	uintptr(unsafe.Pointer(&struct{ h, w, x, y uint16 }{uint16(rows), uint16(cols), 0, 0})),
-	// )
-	// return err
+func (rt *ResizableHostTerminal) Wait() error {
+	return rt.Cmd.Wait()
 }

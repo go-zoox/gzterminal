@@ -10,6 +10,7 @@ import (
 	"github.com/eiannone/keyboard"
 	"github.com/go-zoox/cli"
 	"github.com/go-zoox/gzterminal/client"
+	"github.com/go-zoox/logger"
 )
 
 func RegistryClient(app *cli.MultipleProgram) {
@@ -50,6 +51,15 @@ func RegistryClient(app *cli.MultipleProgram) {
 			if err := c.Connect(); err != nil {
 				return err
 			}
+			go func() {
+				err := <-c.OnClose()
+				if err != nil {
+					logger.Errorf("server disconnect by %v", err)
+				} else {
+					logger.Errorf("server disconnect")
+				}
+				os.Exit(1)
+			}()
 
 			// resize
 			if err := c.Resize(); err != nil {

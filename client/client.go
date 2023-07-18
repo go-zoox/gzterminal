@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -10,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/go-zoox/gzterminal/server"
+	"github.com/go-zoox/gzterminal/message"
 	"github.com/go-zoox/logger"
 	"github.com/gorilla/websocket"
 	"golang.org/x/term"
@@ -18,8 +17,11 @@ import (
 
 type Client interface {
 	Connect() error
+	Close() error
 	Resize() error
 	Send(key string) error
+	//
+	OnClose() chan error
 }
 
 type Config struct {
@@ -38,6 +40,8 @@ type client struct {
 	//
 	stdout io.Writer
 	stderr io.Writer
+	//
+	closeCh chan error
 }
 
 func New(cfg *Config) Client {
@@ -55,6 +59,8 @@ func New(cfg *Config) Client {
 		//
 		stdout: stdout,
 		stderr: stderr,
+		//
+		closeCh: make(chan error),
 	}
 }
 
@@ -85,24 +91,24 @@ func (c *client) Connect() error {
 	c.conn = conn
 	cancel()
 
+	// listen
 	go func() {
 		for {
 			_, message, err := conn.ReadMessage()
 			if err != nil {
-				if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
-					return
-				}
+				// if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+				// 	return
+				// }
 
-				if websocket.IsCloseError(err, websocket.CloseAbnormalClosure) {
-					return
-				}
+				// if websocket.IsCloseError(err, websocket.CloseAbnormalClosure) {
+				// 	return
+				// }
 
-				if websocket.IsCloseError(err, websocket.CloseGoingAway) {
-					return
-				}
+				// if websocket.IsCloseError(err, websocket.CloseGoingAway) {
+				// 	return
+				// }
 
-				logger.Debugf("failed to receive command response: %s", err)
-				// os.Exit(1)
+				c.closeCh <- err
 				return
 			}
 
@@ -131,24 +137,42 @@ func (c *client) Connect() error {
 	return nil
 }
 
+func (c *client) Close() error {
+	close(c.closeCh)
+	return c.conn.Close()
+}
+
 func (c *client) Resize() error {
 	fd := int(os.Stdin.Fd())
 	columns, rows, err := term.GetSize(fd)
 	if err != nil {
 		return err
 	}
-	resizeData := &server.Resize{
+
+	msg := &message.Message{}
+	msg.SetType(message.TypeResize)
+	msg.SetResize(&message.Resize{
 		Columns: columns,
 		Rows:    rows,
-	}
-	data, err := json.Marshal(resizeData)
-	if err != nil {
+	})
+	if err := msg.Serialize(); err != nil {
 		return err
 	}
 
-	return c.conn.WriteMessage(websocket.TextMessage, append([]byte{'2'}, data...))
+	return c.conn.WriteMessage(websocket.TextMessage, msg.Msg())
 }
 
 func (c *client) Send(key string) error {
-	return c.conn.WriteMessage(websocket.TextMessage, []byte(key))
+	msg := &message.Message{}
+	msg.SetType(message.TypeKey)
+	msg.SetKey([]byte(key))
+	if err := msg.Serialize(); err != nil {
+		return err
+	}
+
+	return c.conn.WriteMessage(websocket.TextMessage, msg.Msg())
+}
+
+func (c *client) OnClose() chan error {
+	return c.closeCh
 }

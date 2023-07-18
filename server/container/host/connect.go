@@ -21,5 +21,6 @@ func (h *host) Connect(ctx context.Context) (session session.Session, err error)
 
 	return &ResizableHostTerminal{
 		File: terminal,
+		Cmd:  cmd,
 	}, nil
 }
