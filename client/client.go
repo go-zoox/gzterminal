@@ -19,7 +19,7 @@ type Client interface {
 	Connect() error
 	Close() error
 	Resize() error
-	Send(key string) error
+	Send(key []byte) error
 	//
 	OnClose() chan error
 }
@@ -162,10 +162,10 @@ func (c *client) Resize() error {
 	return c.conn.WriteMessage(websocket.TextMessage, msg.Msg())
 }
 
-func (c *client) Send(key string) error {
+func (c *client) Send(key []byte) error {
 	msg := &message.Message{}
 	msg.SetType(message.TypeKey)
-	msg.SetKey([]byte(key))
+	msg.SetKey(key)
 	if err := msg.Serialize(); err != nil {
 		return err
 	}

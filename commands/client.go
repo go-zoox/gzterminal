@@ -102,19 +102,62 @@ func RegistryClient(app *cli.MultipleProgram) {
 					fmt.Fprintln(os.Stderr, err)
 				}
 
+				// key == 0 => char
 				if key == 0 {
-					err = c.Send(string(char))
+					err = c.Send([]byte{byte(char)})
 					if err != nil {
 						fmt.Fprintln(os.Stderr, err)
 					}
 				} else {
-					// if key == keyboard.KeyBackspace2 {
-					// 	err = c.Send("\x7F")
-					// 	if err != nil {
-					// 		fmt.Fprintln(os.Stderr, err)
-					// 	}
-					// }
-					err = c.Send(string([]byte{byte(key)}))
+					switch key {
+					case keyboard.KeyF1:
+						err = c.Send([]byte{0x1b, 0x4f, 0x50})
+					case keyboard.KeyF2:
+						err = c.Send([]byte{0x1b, 0x4f, 0x51})
+					case keyboard.KeyF3:
+						err = c.Send([]byte{0x1b, 0x4f, 0x52})
+					case keyboard.KeyF4:
+						err = c.Send([]byte{0x1b, 0x4f, 0x53})
+					case keyboard.KeyF5:
+						err = c.Send([]byte{0x1b, 0x5b, 0x31, 0x35, 0x7e})
+					case keyboard.KeyF6:
+						err = c.Send([]byte{0x1b, 0x5b, 0x31, 0x37, 0x7e})
+					case keyboard.KeyF7:
+						err = c.Send([]byte{0x1b, 0x5b, 0x31, 0x38, 0x7e})
+					case keyboard.KeyF8:
+						err = c.Send([]byte{0x1b, 0x5b, 0x31, 0x39, 0x7e})
+					case keyboard.KeyF9:
+						err = c.Send([]byte{0x1b, 0x5b, 0x32, 0x30, 0x7e})
+					case keyboard.KeyF10:
+						err = c.Send([]byte{0x1b, 0x5b, 0x32, 0x31, 0x7e})
+					case keyboard.KeyF11:
+						err = c.Send([]byte{0x1b, 0x5b, 0x32, 0x33, 0x7e})
+					case keyboard.KeyF12:
+						err = c.Send([]byte{0x1b, 0x5b, 0x32, 0x34, 0x7e})
+					case keyboard.KeyInsert:
+						err = c.Send([]byte{0x1b, 0x5b, 0x32, 0x7e})
+					case keyboard.KeyDelete:
+						err = c.Send([]byte{0x1b, 0x5b, 0x33, 0x7e})
+					case keyboard.KeyHome:
+						err = c.Send([]byte{0x1b, 0x5b, 0x48})
+					case keyboard.KeyEnd:
+						err = c.Send([]byte{0x1b, 0x5b, 0x46})
+					case keyboard.KeyPgup:
+						err = c.Send([]byte{0x1b, 0x5b, 0x35, 0x7e})
+					case keyboard.KeyPgdn:
+						err = c.Send([]byte{0x1b, 0x5b, 0x36, 0x7e})
+					case keyboard.KeyArrowUp:
+						err = c.Send([]byte{0x1b, 0x5b, 0x41})
+					case keyboard.KeyArrowDown:
+						err = c.Send([]byte{0x1b, 0x5b, 0x42})
+					case keyboard.KeyArrowRight:
+						err = c.Send([]byte{0x1b, 0x5b, 0x43})
+					case keyboard.KeyArrowLeft:
+						err = c.Send([]byte{0x1b, 0x5b, 0x44})
+					default:
+						err = c.Send([]byte{byte(key)})
+					}
+
 					if err != nil {
 						fmt.Fprintln(os.Stderr, err)
 					}
