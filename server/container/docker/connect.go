@@ -1,4 +1,4 @@
-package container
+package docker
 
 import (
 	"context"
@@ -12,15 +12,15 @@ import (
 	"github.com/go-zoox/uuid"
 )
 
-func Docker(ctx context.Context) (session session.Session, err error) {
+func (d *docker) Connect(ctx context.Context) (session session.Session, err error) {
 	c, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv)
 	if err != nil {
 		return nil, err
 	}
 
 	res, err := c.ContainerCreate(ctx, &container.Config{
-		Image:        "whatwewant/zmicro:v1",
-		Cmd:          []string{"/bin/bash"},
+		Image:        d.cfg.Image,
+		Cmd:          []string{"/bin/sh"},
 		Tty:          true,
 		OpenStdin:    true,
 		AttachStdin:  true,
@@ -90,43 +90,4 @@ func Docker(ctx context.Context) (session session.Session, err error) {
 	}()
 
 	return
-}
-
-type ResizableContainerTerminal struct {
-	Ctx         context.Context
-	Client      *dockerClient.Client
-	ContainerID string
-	ReadCh      chan []byte
-	Stream      types.HijackedResponse
-}
-
-func (rct *ResizableContainerTerminal) Close() error {
-	if err := rct.Stream.CloseWrite(); err != nil {
-		return err
-	}
-
-	return rct.Client.ContainerRemove(rct.Ctx, rct.ContainerID, types.ContainerRemoveOptions{
-		Force: true,
-	})
-}
-
-func (rct *ResizableContainerTerminal) Read(p []byte) (n int, err error) {
-	return copy(p, <-rct.ReadCh), nil
-}
-
-func (rct *ResizableContainerTerminal) Write(p []byte) (n int, err error) {
-	n, err = rct.Stream.Conn.Write(p)
-	if err != nil {
-		logger.Errorf("Failed to write to pty master: %s", err)
-		return 0, err
-	}
-
-	return
-}
-
-func (rct *ResizableContainerTerminal) Resize(rows, cols int) error {
-	return rct.Client.ContainerResize(rct.Ctx, rct.ContainerID, types.ResizeOptions{
-		Height: uint(rows),
-		Width:  uint(cols),
-	})
 }

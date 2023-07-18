@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/go-zoox/gzterminal/server/container"
+	"github.com/go-zoox/gzterminal/server/container/docker"
+	"github.com/go-zoox/gzterminal/server/container/host"
 	"github.com/go-zoox/gzterminal/server/session"
 	"github.com/go-zoox/logger"
 	"github.com/go-zoox/zoox"
@@ -105,15 +106,17 @@ func (s *server) Run() error {
 		}
 
 		if cfg.Container == "host" {
-			if session, err = container.Host(ctx.Context(), &container.HostConfig{
+			if session, err = host.New(&host.Config{
 				Shell: cfg.Shell,
-			}); err != nil {
+			}).Connect(ctx.Context()); err != nil {
 				ctx.Logger.Errorf("[websocket] failed to connect host: %s", err)
 				client.Disconnect()
 				return
 			}
 		} else if cfg.Container == "docker" {
-			if session, err = container.Docker(ctx.Context()); err != nil {
+			if session, err = docker.New(&docker.Config{
+				Shell: cfg.Shell,
+			}).Connect(ctx.Context()); err != nil {
 				ctx.Logger.Errorf("[websocket] failed to connect container: %s", err)
 				client.Disconnect()
 				return
