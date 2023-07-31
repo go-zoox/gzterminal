@@ -38,18 +38,24 @@ func RegistryServer(app *cli.MultipleProgram) {
 				Usage:   "Password for Basic Auth",
 				EnvVars: []string{"PASSWORD"},
 			},
+			&cli.StringFlag{
+				Name:    "container",
+				Usage:   "Container runtime, options: host, docker, kubernetes, ssh, default: host",
+				EnvVars: []string{"CONTAINER"},
+				Value:   "host",
+			},
 		},
 		Action: func(ctx *cli.Context) (err error) {
-			Username := ctx.String("username")
-			Password := ctx.String("password")
-
-			return server.Serve(&server.Config{
-				Port:        ctx.Int64("port"),
-				Shell:       ctx.String("shell"),
-				InitCommand: ctx.String("init-command"),
-				Username:    Username,
-				Password:    Password,
+			s := server.New(&server.Config{
+				Port:     ctx.Int64("port"),
+				Shell:    ctx.String("shell"),
+				Username: ctx.String("username"),
+				Password: ctx.String("password"),
+				//
+				Container: ctx.String("container"),
 			})
+
+			return s.Run()
 		},
 	})
 }
