@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	"github.com/go-zoox/gzterminal/message"
-	"github.com/go-zoox/gzterminal/server/container/docker"
-	"github.com/go-zoox/gzterminal/server/container/host"
 	"github.com/go-zoox/gzterminal/server/session"
 	"github.com/go-zoox/logger"
 	"github.com/go-zoox/zoox"
@@ -73,7 +71,6 @@ func (s *server) Run() error {
 
 	app.WebSocket(cfg.Path, func(ctx *zoox.Context, client *websocket.Client) {
 		var session session.Session
-		var err error
 		client.OnDisconnect = func() {
 			if session != nil {
 				session.Close()
@@ -88,9 +85,51 @@ func (s *server) Run() error {
 			}
 
 			switch msg.Type() {
+			case message.TypeConnect:
+				data := msg.Connect()
+				if data.Container == "" {
+					data.Container = cfg.Container
+				}
+				// if data.Shell == "" {
+				// 	data.Shell = cfg.Shell
+				// }
+
+				if session, err = connect(ctx, client, &ConnectConfig{
+					Container:   data.Container,
+					Shell:       data.Shell,
+					Environment: data.Environment,
+					WorkDir:     data.WorkDir,
+					InitCommand: data.InitCommand,
+					Image:       data.Image,
+				}); err != nil {
+					logger.Errorf("failed to connect: %s", err)
+					return
+				}
+
+				msg := &message.Message{}
+				msg.SetType(message.TypeConnect)
+				// msg.SetOutput(buf[:n])
+				if err := msg.Serialize(); err != nil {
+					logger.Errorf("failed to serialize message: %s", err)
+					return
+				}
+
+				client.WriteMessage(websocket.BinaryMessage, msg.Msg())
 			case message.TypeKey:
+				if session == nil {
+					ctx.Logger.Errorf("session is not ready")
+					client.Disconnect()
+					return
+				}
+
 				session.Write(msg.Key())
 			case message.TypeResize:
+				if session == nil {
+					ctx.Logger.Errorf("session is not ready")
+					client.Disconnect()
+					return
+				}
+
 				resize := msg.Resize()
 				err = session.Resize(resize.Rows, resize.Columns)
 				if err != nil {
@@ -101,57 +140,6 @@ func (s *server) Run() error {
 			}
 		}
 
-		if cfg.Container == "host" {
-			if session, err = host.New(&host.Config{
-				Shell:       cfg.Shell,
-				InitCommand: cfg.InitCommand,
-			}).Connect(ctx.Context()); err != nil {
-				ctx.Logger.Errorf("[websocket] failed to connect host: %s", err)
-				client.Disconnect()
-				return
-			}
-		} else if cfg.Container == "docker" {
-			if session, err = docker.New(&docker.Config{
-				Shell:       cfg.Shell,
-				InitCommand: cfg.InitCommand,
-			}).Connect(ctx.Context()); err != nil {
-				ctx.Logger.Errorf("[websocket] failed to connect container: %s", err)
-				client.Disconnect()
-				return
-			}
-		} else {
-			panic(fmt.Errorf("unknown mode: %s", cfg.Container))
-		}
-
-		go func() {
-			if err := session.Wait(); err != nil {
-				logger.Errorf("Failed to wait session: %s", err)
-			}
-
-			client.Disconnect()
-		}()
-
-		go func() {
-			buf := make([]byte, 1024)
-			for {
-				n, err := session.Read(buf)
-				if err != nil {
-					logger.Errorf("failed to read from session: %s", err)
-					client.WriteMessage(websocket.BinaryMessage, []byte(err.Error()))
-					return
-				}
-
-				msg := &message.Message{}
-				msg.SetType(message.TypeOutput)
-				msg.SetOutput(buf[:n])
-				if err := msg.Serialize(); err != nil {
-					logger.Errorf("failed to serialize message: %s", err)
-					return
-				}
-
-				client.WriteMessage(websocket.BinaryMessage, msg.Msg())
-			}
-		}()
 	})
 
 	app.Get("/", func(ctx *zoox.Context) {

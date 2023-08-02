@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -25,12 +26,6 @@ func RegistryClient(app *cli.MultipleProgram) {
 				Required: true,
 			},
 			&cli.StringFlag{
-				Name:    "exec",
-				Usage:   "specify exec command",
-				Aliases: []string{"e"},
-				EnvVars: []string{"EXEC"},
-			},
-			&cli.StringFlag{
 				Name:    "username",
 				Usage:   "Username for Basic Auth",
 				EnvVars: []string{"USERNAME"},
@@ -40,10 +35,55 @@ func RegistryClient(app *cli.MultipleProgram) {
 				Usage:   "Password for Basic Auth",
 				EnvVars: []string{"PASSWORD"},
 			},
+			&cli.StringFlag{
+				Name:    "command",
+				Usage:   "specify exec command",
+				Aliases: []string{"c"},
+				EnvVars: []string{"COMMAND"},
+			},
+			&cli.StringFlag{
+				Name:  "shell",
+				Usage: "specify terminal shell",
+			},
+			&cli.StringFlag{
+				Name:    "workdir",
+				Usage:   "specify terminal workdir",
+				Aliases: []string{"w"},
+				EnvVars: []string{"WORKDIR"},
+			},
+			&cli.StringSliceFlag{
+				Name:    "env",
+				Usage:   "specify terminal env",
+				Aliases: []string{"e"},
+				EnvVars: []string{"ENV"},
+			},
+			&cli.StringFlag{
+				Name:    "image",
+				Usage:   "specify image for container runtime",
+				EnvVars: []string{"IMAGE"},
+			},
 		},
 		Action: func(ctx *cli.Context) (err error) {
+			env := map[string]string{}
+			for _, e := range ctx.StringSlice("env") {
+				kv := strings.SplitN(e, "=", 2)
+				if len(kv) >= 2 {
+					env[kv[0]] = strings.Join(kv[1:], "=")
+				} else if len(kv) == 1 {
+					env[kv[0]] = ""
+				}
+			}
+
 			c := client.New(&client.Config{
-				Server:   ctx.String("server"),
+				Server: ctx.String("server"),
+				//
+				Shell:       ctx.String("shell"),
+				Environment: env,
+				WorkDir:     ctx.String("workdir"),
+				Command:     ctx.String("command"),
+				//
+				Image: ctx.String("image"),
+				//
 				Username: ctx.String("username"),
 				Password: ctx.String("password"),
 			})
@@ -55,10 +95,11 @@ func RegistryClient(app *cli.MultipleProgram) {
 				err := <-c.OnClose()
 				if err != nil {
 					logger.Errorf("server disconnect by %v", err)
+					os.Exit(1)
 				} else {
-					logger.Errorf("server disconnect")
+					// logger.Errorf("client disconnect")
+					os.Exit(0)
 				}
-				os.Exit(1)
 			}()
 
 			// resize

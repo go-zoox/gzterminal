@@ -1,6 +1,8 @@
 package docker
 
-import "github.com/go-zoox/gzterminal/server/container"
+import (
+	"github.com/go-zoox/gzterminal/server/container"
+)
 
 type Docker interface {
 	container.Container
@@ -13,6 +15,10 @@ type docker struct {
 func New(cfg *Config) Docker {
 	if cfg.Image == "" {
 		cfg.Image = "whatwewant/zmicro:v1"
+	}
+
+	if cfg.Shell == "" {
+		cfg.Shell = "/bin/sh"
 	}
 
 	return &docker{

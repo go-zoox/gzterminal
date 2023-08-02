@@ -3,6 +3,9 @@ package message
 type Type byte
 
 const (
+	// TypeConnect ...
+	TypeConnect Type = '0'
+
 	// TypCommand ...
 	TypeKey Type = '1'
 

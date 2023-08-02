@@ -17,6 +17,11 @@ func (d *docker) Connect(ctx context.Context) (session session.Session, err erro
 		args = append(args, "-c", d.cfg.InitCommand)
 	}
 
+	env := []string{}
+	for k, v := range d.cfg.Environment {
+		env = append(env, fmt.Sprintf("%s=%s", k, v))
+	}
+
 	c, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv)
 	if err != nil {
 		return nil, err
@@ -31,16 +36,13 @@ func (d *docker) Connect(ctx context.Context) (session session.Session, err erro
 		AttachStdout: true,
 		AttachStderr: true,
 		StdinOnce:    true,
+		WorkingDir:   d.cfg.WorkDir,
+		Env:          env,
 	}, nil, nil, nil, uuid.V4())
 	if err != nil {
 		return nil, err
 	}
 	containerID := res.ID
-
-	err = c.ContainerStart(ctx, containerID, types.ContainerStartOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to start container: %v", err)
-	}
 
 	stream, err := c.ContainerAttach(ctx, containerID, types.ContainerAttachOptions{
 		Stream: true,
@@ -73,6 +75,11 @@ func (d *docker) Connect(ctx context.Context) (session session.Session, err erro
 			rct.ReadCh <- buf[:n]
 		}
 	}()
+
+	err = c.ContainerStart(ctx, containerID, types.ContainerStartOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to start container: %v", err)
+	}
 
 	return
 }

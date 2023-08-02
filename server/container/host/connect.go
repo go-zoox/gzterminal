@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 
@@ -18,6 +19,10 @@ func (h *host) Connect(ctx context.Context) (session session.Session, err error)
 	cmd := exec.Command(h.cfg.Shell, args...)
 	cmd.Env = append(os.Environ(), "TERM=xterm", "HISTFILE=/dev/null")
 	cmd.Dir = h.cfg.WorkDir
+
+	for k, v := range h.cfg.Environment {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+	}
 
 	terminal, err := pty.Start(cmd)
 	if err != nil {
