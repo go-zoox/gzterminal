@@ -10,8 +10,8 @@ import (
 
 	"github.com/eiannone/keyboard"
 	"github.com/go-zoox/cli"
-	"github.com/go-zoox/gzterminal/client"
 	"github.com/go-zoox/logger"
+	"github.com/go-zoox/terminal/client"
 )
 
 func RegistryClient(app *cli.MultipleProgram) {

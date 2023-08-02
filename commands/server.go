@@ -2,7 +2,7 @@ package commands
 
 import (
 	"github.com/go-zoox/cli"
-	"github.com/go-zoox/gzterminal/server"
+	"github.com/go-zoox/terminal/server"
 )
 
 func RegistryServer(app *cli.MultipleProgram) {
