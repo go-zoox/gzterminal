@@ -93,6 +93,12 @@ func (s *server) Run() error {
 				// if data.Shell == "" {
 				// 	data.Shell = cfg.Shell
 				// }
+				if data.InitCommand == "" {
+					data.InitCommand = cfg.InitCommand
+				}
+				// if data.Image == "" {
+				// 	data.Image = cfg.Image
+				// }
 
 				if session, err = connect(ctx, client, &ConnectConfig{
 					Container:   data.Container,
