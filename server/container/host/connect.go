@@ -10,7 +10,12 @@ import (
 )
 
 func (h *host) Connect(ctx context.Context) (session session.Session, err error) {
-	cmd := exec.Command(h.cfg.Shell)
+	args := []string{}
+	if h.cfg.InitCommand != "" {
+		args = append(args, "-c", h.cfg.InitCommand)
+	}
+
+	cmd := exec.Command(h.cfg.Shell, args...)
 	cmd.Env = append(os.Environ(), "TERM=xterm", "HISTFILE=/dev/null")
 	cmd.Dir = h.cfg.WorkDir
 

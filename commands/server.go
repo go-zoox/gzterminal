@@ -53,6 +53,8 @@ func RegistryServer(app *cli.MultipleProgram) {
 				Password: ctx.String("password"),
 				//
 				Container: ctx.String("container"),
+				//
+				InitCommand: ctx.String("init-command"),
 			})
 
 			return s.Run()

@@ -26,6 +26,8 @@ type Config struct {
 	Container string
 	//
 	Path string
+	//
+	InitCommand string
 }
 
 type server struct {
@@ -101,7 +103,8 @@ func (s *server) Run() error {
 
 		if cfg.Container == "host" {
 			if session, err = host.New(&host.Config{
-				Shell: cfg.Shell,
+				Shell:       cfg.Shell,
+				InitCommand: cfg.InitCommand,
 			}).Connect(ctx.Context()); err != nil {
 				ctx.Logger.Errorf("[websocket] failed to connect host: %s", err)
 				client.Disconnect()
@@ -109,7 +112,8 @@ func (s *server) Run() error {
 			}
 		} else if cfg.Container == "docker" {
 			if session, err = docker.New(&docker.Config{
-				Shell: cfg.Shell,
+				Shell:       cfg.Shell,
+				InitCommand: cfg.InitCommand,
 			}).Connect(ctx.Context()); err != nil {
 				ctx.Logger.Errorf("[websocket] failed to connect container: %s", err)
 				client.Disconnect()
