@@ -8,10 +8,11 @@ type Message struct {
 	typ Type
 
 	//
-	key    Key
-	resize *Resize
-	auth   *Auth
-	output Output
+	key     Key
+	connect *Connect
+	resize  *Resize
+	auth    *Auth
+	output  Output
 }
 
 func (m *Message) data() []byte {
@@ -24,6 +25,12 @@ func (m *Message) Msg() []byte {
 
 func (m *Message) Serialize() error {
 	switch m.typ {
+	case TypeConnect:
+		connect, err := json.Marshal(m.connect)
+		if err != nil {
+			return err
+		}
+		m.msg = append([]byte{byte(m.typ)}, connect...)
 	case TypeKey:
 		m.msg = append([]byte{byte(m.typ)}, m.key...)
 	case TypeResize:
@@ -48,6 +55,15 @@ func (m *Message) Serialize() error {
 func Deserialize(rawMsg []byte) (msg *Message, err error) {
 	msg = &Message{msg: rawMsg}
 	switch msg.Type() {
+	case TypeConnect:
+		connect := &Connect{}
+		if len(msg.data()) != 0 {
+			err = json.Unmarshal(msg.data(), connect)
+			if err != nil {
+				return
+			}
+		}
+		msg.connect = connect
 	case TypeKey:
 		msg.key = msg.data()
 	case TypeResize:

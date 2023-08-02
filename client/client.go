@@ -25,7 +25,16 @@ type Client interface {
 }
 
 type Config struct {
-	Server   string
+	Server string
+	//
+	Shell       string
+	Environment map[string]string
+	WorkDir     string
+	Command     string
+	//
+	Container string
+	Image     string
+	//
 	Username string
 	Password string
 	//
@@ -89,7 +98,13 @@ func (c *client) Connect() error {
 		return fmt.Errorf("failed to connect at %s (status: %d, response: %s, error: %v)", u.String(), response.StatusCode, string(body), err)
 	}
 	c.conn = conn
-	cancel()
+	defer cancel()
+
+	// connect
+	if err := c.connect(); err != nil {
+		return err
+	}
+	connectCh := make(chan struct{})
 
 	// listen
 	go func() {
@@ -100,9 +115,9 @@ func (c *client) Connect() error {
 				// 	return
 				// }
 
-				// if websocket.IsCloseError(err, websocket.CloseAbnormalClosure) {
-				// 	return
-				// }
+				if websocket.IsCloseError(err, websocket.CloseAbnormalClosure) {
+					err = nil
+				}
 
 				// if websocket.IsCloseError(err, websocket.CloseGoingAway) {
 				// 	return
@@ -126,6 +141,8 @@ func (c *client) Connect() error {
 			}
 
 			switch msg.Type() {
+			case message.TypeConnect:
+				connectCh <- struct{}{}
 			case message.TypeOutput:
 				c.stdout.Write(msg.Output())
 			default:
@@ -134,12 +151,43 @@ func (c *client) Connect() error {
 		}
 	}()
 
+	// wait for connect
+	<-connectCh
+
 	return nil
 }
 
 func (c *client) Close() error {
 	close(c.closeCh)
 	return c.conn.Close()
+}
+
+func (c *client) connect() error {
+	if c.cfg.Image != "" {
+		c.cfg.Container = "docker"
+	}
+
+	msg := &message.Message{}
+	msg.SetType(message.TypeConnect)
+	msg.SetConnect(&message.Connect{
+		Container: c.cfg.Container,
+		//
+		Shell:       c.cfg.Shell,
+		Environment: c.cfg.Environment,
+		WorkDir:     c.cfg.WorkDir,
+		InitCommand: c.cfg.Command,
+		//
+		Image: c.cfg.Image,
+		//
+		Username: c.cfg.Username,
+		Password: c.cfg.Password,
+	})
+
+	if err := msg.Serialize(); err != nil {
+		return err
+	}
+
+	return c.conn.WriteMessage(websocket.TextMessage, msg.Msg())
 }
 
 func (c *client) Resize() error {

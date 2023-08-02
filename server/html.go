@@ -44,6 +44,7 @@ func RenderXTerm(data zoox.H) string {
 			<div id="terminal"></div>
 			<script>
 				var messageType = {
+					Connect: '0',
 					Key: '1',
 					Resize: '2',
 					Output: '6',
@@ -71,22 +72,34 @@ func RenderXTerm(data zoox.H) string {
 					term.write('\r\n\x1b[31mConnection Closed.\x1b[m\r\n');
 				};
 				ws.onopen = () => {
-					term.open(document.getElementById('terminal'));
-					fitAddon.fit();
-
-					if (!!config.welcomeMessage) {
-						term.write(config.welcomeMessage + " \r\n")
-					}
-
-					term.focus();
+					ws.send(messageType.Connect);
 				}
 				window._data = [];
 				ws.onmessage = evt => {
 					var rawMsg = evt.data;
-					var typ = rawMsg[0];
-					var payload = rawMsg.slice(1);
+					if (!(rawMsg instanceof ArrayBuffer)) {
+						console.error('unknown message type, need ArrayBuffer', rawMsg);
+						return;
+					}
 					
-					term.write(typeof rawMsg === 'string' ? payload : new Uint8Array(payload));
+					var buffer = new Uint8Array(rawMsg);
+					var typ = buffer[0];
+					var payload = buffer.slice(1);
+
+					// output
+					if (typ === messageType.Output.charCodeAt(0)) {
+						term.write(payload);
+					} else if (typ === messageType.Connect.charCodeAt(0)) {
+						// connect
+						term.open(document.getElementById('terminal'));
+						fitAddon.fit();
+
+						if (!!config.welcomeMessage) {
+							term.write(config.welcomeMessage + " \r\n")
+						}
+
+						term.focus();
+					}
 				};
 		
 				term.onResize(({ cols, rows }) => {
