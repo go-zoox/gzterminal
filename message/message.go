@@ -13,6 +13,7 @@ type Message struct {
 	resize  *Resize
 	auth    *Auth
 	output  Output
+	exit    *Exit
 }
 
 func (m *Message) data() []byte {
@@ -47,6 +48,12 @@ func (m *Message) Serialize() error {
 		m.msg = append([]byte{byte(m.typ)}, auth...)
 	case TypeOutput:
 		m.msg = append([]byte{byte(m.typ)}, m.output...)
+	case TypeExit:
+		exit, err := json.Marshal(m.exit)
+		if err != nil {
+			return err
+		}
+		m.msg = append([]byte{byte(m.typ)}, exit...)
 	}
 
 	return nil
@@ -82,6 +89,13 @@ func Deserialize(rawMsg []byte) (msg *Message, err error) {
 		msg.auth = auth
 	case TypeOutput:
 		msg.output = msg.data()
+	case TypeExit:
+		exit := &Exit{}
+		err = json.Unmarshal(msg.data(), exit)
+		if err != nil {
+			return
+		}
+		msg.exit = exit
 	}
 
 	return

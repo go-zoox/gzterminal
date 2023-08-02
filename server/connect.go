@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"io"
+	"os/exec"
 
 	"github.com/go-zoox/gzterminal/message"
 	"github.com/go-zoox/gzterminal/server/container/docker"
@@ -58,7 +59,25 @@ func connect(ctx *zoox.Context, client *websocket.Client, cfg *ConnectConfig) (s
 
 	go func() {
 		if err := session.Wait(); err != nil {
-			logger.Errorf("Failed to wait session: %s", err)
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				logger.Errorf("exit status: %d", exitErr.ExitCode())
+				// client.WriteMessage(websocket.BinaryMessage, []byte(exitErr.Error()))
+
+				msg := &message.Message{}
+				msg.SetType(message.TypeExit)
+				msg.SetExit(&message.Exit{
+					Code:    exitErr.ExitCode(),
+					Message: exitErr.Error(),
+				})
+				if err := msg.Serialize(); err != nil {
+					logger.Errorf("failed to serialize message: %s", err)
+					return
+				}
+
+				client.WriteMessage(websocket.BinaryMessage, msg.Msg())
+			} else {
+				logger.Errorf("failed to wait session: %s", err)
+			}
 		}
 
 		client.Disconnect()
