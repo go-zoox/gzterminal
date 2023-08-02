@@ -53,6 +53,15 @@ type client struct {
 	closeCh chan error
 }
 
+type ExitError struct {
+	Code    int
+	Message string
+}
+
+func (e *ExitError) Error() string {
+	return fmt.Sprintf("%s(exit code: %d)", e.Message, e.Code)
+}
+
 func New(cfg *Config) Client {
 	stdout := cfg.Stdout
 	if stdout == nil {
@@ -145,8 +154,14 @@ func (c *client) Connect() error {
 				connectCh <- struct{}{}
 			case message.TypeOutput:
 				c.stdout.Write(msg.Output())
+			case message.TypeExit:
+				data := msg.Exit()
+				c.closeCh <- &ExitError{
+					Code:    data.Code,
+					Message: data.Message,
+				}
 			default:
-				c.stderr.Write([]byte(fmt.Sprintf("unknown message type: %s\n", msg.Type())))
+				c.stderr.Write([]byte(fmt.Sprintf("unknown message type: %v\n", msg.Type())))
 			}
 		}
 	}()

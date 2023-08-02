@@ -23,6 +23,9 @@ const (
 
 	// Output ...
 	TypeOutput Type = '6'
+
+	// Exit ...
+	TypeExit Type = '7'
 )
 
 func (m *Message) Type() Type {

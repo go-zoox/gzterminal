@@ -94,6 +94,12 @@ func RegistryClient(app *cli.MultipleProgram) {
 			go func() {
 				err := <-c.OnClose()
 				if err != nil {
+					if e, ok := err.(*client.ExitError); ok {
+						// os.Stdout.Write([]byte(e.Message + "\n"))
+						os.Exit(e.Code)
+						return
+					}
+
 					logger.Errorf("server disconnect by %v", err)
 					os.Exit(1)
 				} else {
