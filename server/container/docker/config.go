@@ -6,4 +6,6 @@ type Config struct {
 	WorkDir     string
 
 	Image string
+
+	InitCommand string
 }

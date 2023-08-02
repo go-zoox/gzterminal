@@ -12,6 +12,11 @@ import (
 )
 
 func (d *docker) Connect(ctx context.Context) (session session.Session, err error) {
+	args := []string{}
+	if d.cfg.InitCommand != "" {
+		args = append(args, "-c", d.cfg.InitCommand)
+	}
+
 	c, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv)
 	if err != nil {
 		return nil, err
@@ -19,7 +24,7 @@ func (d *docker) Connect(ctx context.Context) (session session.Session, err erro
 
 	res, err := c.ContainerCreate(ctx, &container.Config{
 		Image:        d.cfg.Image,
-		Cmd:          []string{"/bin/bash"},
+		Cmd:          append([]string{d.cfg.Shell}, args...),
 		Tty:          true,
 		OpenStdin:    true,
 		AttachStdin:  true,
